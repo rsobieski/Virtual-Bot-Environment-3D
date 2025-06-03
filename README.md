@@ -54,32 +54,6 @@ The library is structured into several core components for transparency and coll
 
 * **State Saving/Loading:** The World class provides methods to save the current state to a JSON file and to load from a file. This includes all necessary information to reconstruct the world: each object’s type, position, properties (energy, color, etc.), and connections, as well as any time counters relevant (like how long connections have lasted if needed). This feature is crucial for long-running simulations and collaborative development (teams can share a world snapshot that reproduces an interesting scenario or bug). It also helps in training workflows – one could save the state of a simulation and resume training an RL agent from that point, or evaluate it later. The JSON format ensures the saved state is human-readable and easily version-controlled if placed in a repository.
 
----
-
-\## Quick Start
-
-```bash
-# 1. Install in editable mode (requires Python ≥ 3.10)
-$ git clone https://github.com/your‑org/Virtual-Bot-Environment-3D.git
-$ cd Virtual-Bot-Environment-3D
-$ pip install -e .[dev]
-
-# 2. Run the live demo (opens a window)
-$ python -m examples.run_demo
-```
-
-You should see two cube robots roaming a tiny world and collecting resources in real time.
-
-\### Save / Load a snapshot
-
-```python
-from vbe_3d import World, UrsinaEngine
-world = World(UrsinaEngine())
-# ... run simulation ...
-world.save_state("snapshot.json")
-# later / elsewhere
-world.load_state("snapshot.json")
-```
 
 ---
 
@@ -96,9 +70,5 @@ world.load_state("snapshot.json")
 
 \## License
 
-Virtual Bot Enviroment 3D is released under the **MIT License** — see [`LICENSE`](LICENSE) for details.
-
----
-
-**Happy simulating 🚀**
+Virtual Bot Enviroment 3D is released under the **MIT License** — see [`LICENSE`](https://github.com/rsobieski/Virtual-Bot-Environment-3D/blob/main/LICENSE) for details.
 
