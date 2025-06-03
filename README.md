@@ -1,4 +1,4 @@
-# Virtual Bot Environment 3D \\
+# Virtual Bot Environment 3D 
 
 *A modular 3‑D simulation playground for for self-managing bots*
 
