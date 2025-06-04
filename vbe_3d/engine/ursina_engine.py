@@ -1,6 +1,6 @@
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 
-from ursina import Ursina, Entity, color, Vec3, scene
+from ursina import Ursina, Entity, color, Vec3, scene, destroy
 
 from .base import Engine
 
@@ -11,11 +11,24 @@ if TYPE_CHECKING:  # forward import only for typing
 
 
 class UrsinaEngine(Engine):
-    def __init__(self):
-        # Initialize the Ursina app
-        self.app = Ursina(borderless=False)  # borderless False to allow window controls (just a setting)
-        self.entities: Dict[Any, Entity] = {}  # map simulation objects to Ursina Entities
-        # Add ambient lighting and a floor plane
+    """Ursina-based 3D visualization engine implementation.
+    
+    This engine uses Ursina (built on Panda3D) to provide 3D visualization
+    capabilities for the simulation world.
+    """
+    
+    def __init__(self, borderless: bool = False):
+        """Initialize the Ursina engine.
+        
+        Args:
+            borderless: Whether to run the window in borderless mode.
+        """
+        self.app = Ursina(borderless=borderless)
+        self.entities: Dict[Any, Entity] = {}
+        self._setup_scene()
+        
+    def _setup_scene(self) -> None:
+        """Set up the basic scene elements (lighting, sky, floor)."""
         from ursina import DirectionalLight, Sky, Plane, AmbientLight
         
         # Add ambient light for better overall illumination
@@ -30,56 +43,93 @@ class UrsinaEngine(Engine):
         
         # Add floor plane
         self.floor = Plane(subdivisions=(32,32))
-        self.floor.color = color.gray.tint(-.2)  # Slightly darker gray
+        self.floor.color = color.gray.tint(-.2)
         self.floor.texture = 'white_cube'
         self.floor.texture_scale = (32,32)
 
     def add_object(self, obj: Any) -> None:
-        """Create a cube entity for the object in the Ursina scene."""
-        # assume the object has at least properties: position (x,y,z) and color (RGB tuple)
-        pos = obj.position
-        col = obj.color  # expecting a color tuple like (r,g,b) in [0,1] range
-        cube = Entity(
-            model='cube',
-            color=color.rgb(*[int(c*255) for c in col]),
-            position=pos,
-            scale=(1,1,1),
-            texture='white_cube',  # Add texture for better visual appearance
-            texture_scale=(1,1)    # Scale texture appropriately
-        )
-        self.entities[obj] = cube
+        """Create a visual entity for the object in the Ursina scene.
+        
+        Args:
+            obj: The simulation object to visualize. Must have position and color attributes.
+            
+        Raises:
+            AttributeError: If the object is missing required attributes.
+        """
+        try:
+            pos = obj.position
+            col = obj.color
+        except AttributeError as e:
+            raise AttributeError(f"Object must have position and color attributes: {e}")
+            
+        try:
+            cube = Entity(
+                model='cube',
+                color=color.rgb(*[int(c*255) for c in col]),
+                position=pos,
+                scale=(1,1,1),
+                texture='white_cube',
+                texture_scale=(1,1)
+            )
+            self.entities[obj] = cube
+        except Exception as e:
+            raise RuntimeError(f"Failed to create entity for object: {e}")
 
     def remove_object(self, obj: Any) -> None:
-        """Destroy the object's entity in the Ursina scene."""
+        """Destroy the object's entity in the Ursina scene.
+        
+        Args:
+            obj: The simulation object whose visualization should be removed.
+        """
         ent = self.entities.get(obj)
         if ent:
-            from ursina import destroy
             destroy(ent)
             del self.entities[obj]
 
     def update_object(self, obj: Any) -> None:
-        """Update the Ursina entity to match the object's state (position, color, etc.)."""
+        """Update the Ursina entity to match the object's state.
+        
+        Args:
+            obj: The simulation object whose visualization should be updated.
+        """
         ent = self.entities.get(obj)
         if not ent:
             return
-        pos = obj.position
-        ent.position = pos
-        # Update color if the object's color might change
-        col = obj.color
-        ent.color = color.rgb(*[int(c*255) for c in col])
-        # TODO: update other properties like orientation 
+            
+        try:
+            pos = obj.position
+            ent.position = pos
+            
+            col = obj.color
+            ent.color = color.rgb(*[int(c*255) for c in col])
+            
+            # Update rotation if available
+            if hasattr(obj, 'rotation'):
+                ent.rotation = obj.rotation
+        except Exception as e:
+            print(f"Warning: Failed to update object visualization: {e}")
 
-    def run(self, world: Any) -> None:
-        """Begin the Ursina app loop, calling world.step() each frame."""
-        # Define an update function that Ursina will call every frame
+    def run(self, world: 'World') -> None:
+        """Begin the Ursina app loop, calling world.step() each frame.
+        
+        Args:
+            world: The simulation world to visualize.
+        """
         def update():
-            world.step()  # advance the simulation by one step (tick)
-            # After stepping logic, update all objects' visuals
-            for obj in list(self.entities.keys()):
-                self.update_object(obj)
-        # Assign the update function into the Ursina app's namespace
-        # Ursina will call a global update() if present. We ensure our 'update' is known.
+            try:
+                world.step()
+                for obj in list(self.entities.keys()):
+                    self.update_object(obj)
+            except Exception as e:
+                print(f"Error in simulation step: {e}")
+                
         self.app.taskMgr.add(lambda task: (update() or True) and task.cont, "world_update_task")
-        # Above, we use Panda3D's task manager via Ursina to call update continuously.
-        # the Ursina main loop (open the window and start rendering)
         self.app.run()
+        
+    def cleanup(self) -> None:
+        """Clean up Ursina resources."""
+        for ent in self.entities.values():
+            destroy(ent)
+        self.entities.clear()
+        if hasattr(self, 'app'):
+            self.app.destroy()
