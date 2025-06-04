@@ -10,10 +10,10 @@ if __name__ == "__main__":
     engine = UrsinaEngine()
     world = World(engine)
 
-    world.add_static(StaticElement(position=(5, 0, 0), resource_value=40))
-    world.add_static(StaticElement(position=(0, 0, 5), resource_value=30))
+    world.add_static(StaticElement(position=(5, 0, 0), color=(1, 0, 1), resource_value=40))
+    world.add_static(StaticElement(position=(0, 0, 5), color=(1, 1, 0), resource_value=30))
 
-    world.add_robot(Robot(position=(0, 0, 0)))
-    world.add_robot(Robot(position=(2, 0, 0), brain=RLBrain()))
+    world.add_robot(Robot(position=(0, 0, 0), color=(1, 0, 0)))
+    world.add_robot(Robot(position=(2, 0, 0), color=(0, 1, 0), brain=RLBrain()))
 
     engine.run(world)

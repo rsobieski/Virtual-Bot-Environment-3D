@@ -16,17 +16,21 @@ class UrsinaEngine(Engine):
         self.app = Ursina(borderless=False)  # borderless False to allow window controls (just a setting)
         self.entities: Dict[Any, Entity] = {}  # map simulation objects to Ursina Entities
         # Add ambient lighting and a floor plane
-        from ursina import DirectionalLight, Sky, Plane
+        from ursina import DirectionalLight, Sky, Plane, AmbientLight
+        
+        # Add ambient light for better overall illumination
+        self.ambient_light = AmbientLight(parent=scene, color=color.rgb(200, 200, 200))
         
         # Add directional light for shadows and depth
-        self.light = DirectionalLight(parent=scene, y=2, z=3, shadows=True)
+        self.light = DirectionalLight(parent=scene, y=2, z=3, shadows=True, rotation=(45, -45, 0))
+        self.light.look_at(Vec3(0, 0, 0))
         
         # Add sky for background
         self.sky = Sky()
         
         # Add floor plane
         self.floor = Plane(subdivisions=(32,32))
-        self.floor.color = color.blue.tint(-.2)  # Slightly darker gray
+        self.floor.color = color.gray.tint(-.2)  # Slightly darker gray
         self.floor.texture = 'white_cube'
         self.floor.texture_scale = (32,32)
 
@@ -35,7 +39,14 @@ class UrsinaEngine(Engine):
         # assume the object has at least properties: position (x,y,z) and color (RGB tuple)
         pos = obj.position
         col = obj.color  # expecting a color tuple like (r,g,b) in [0,1] range
-        cube = Entity(model='cube', color=color.rgb(*[int(c*255) for c in col]), position=pos, scale=(1,1,1))
+        cube = Entity(
+            model='cube',
+            color=color.rgb(*[int(c*255) for c in col]),
+            position=pos,
+            scale=(1,1,1),
+            texture='white_cube',  # Add texture for better visual appearance
+            texture_scale=(1,1)    # Scale texture appropriately
+        )
         self.entities[obj] = cube
 
     def remove_object(self, obj: Any) -> None:
