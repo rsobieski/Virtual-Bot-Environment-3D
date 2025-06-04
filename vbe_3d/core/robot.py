@@ -4,6 +4,7 @@ import math
 from typing import Dict, List, Tuple, TYPE_CHECKING
 import itertools
 from enum import Enum
+from ursina import Vec3
 
 from vbe_3d.utils.id_manager import next_id
 from vbe_3d.core.base_element import BaseElement
@@ -98,17 +99,17 @@ class Robot(BaseElement):
             return  # no-op
         step = 1.0  # movement step size
         if action == 1:
-            self.position[0] += step
+            self.position.x += step
         elif action == 2:
-            self.position[0] -= step
+            self.position.x -= step
         elif action == 3:
-            self.position[2] += step
+            self.position.z += step
         elif action == 4:
-            self.position[2] -= step
+            self.position.z -= step
         elif action == 5:
-            self.position[1] += step
+            self.position.y += step
         elif action == 6:
-            self.position[1] -= step
+            self.position.y -= step
         # could add actions like connecting or disconnecting explicitly, but here movement + proximity triggers connection.
 
         # decrease energy for moving, to simulate consumption

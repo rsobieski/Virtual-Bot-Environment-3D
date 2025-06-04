@@ -1,6 +1,6 @@
 from typing import Any, Dict, TYPE_CHECKING
 
-from ursina import Ursina, Entity, color, Vec3
+from ursina import Ursina, Entity, color, Vec3, scene
 
 from .base import Engine
 
@@ -15,9 +15,20 @@ class UrsinaEngine(Engine):
         # Initialize the Ursina app
         self.app = Ursina(borderless=False)  # borderless False to allow window controls (just a setting)
         self.entities: Dict[Any, Entity] = {}  # map simulation objects to Ursina Entities
+        # Add ambient lighting and a floor plane
+        from ursina import DirectionalLight, Sky, Plane
         
-        # TODO: add some basic lighting or floor if needed (not required for basic cubes)
-        # e.g., Sky() or Light() can be added here for environment ambiance
+        # Add directional light for shadows and depth
+        self.light = DirectionalLight(parent=scene, y=2, z=3, shadows=True)
+        
+        # Add sky for background
+        self.sky = Sky()
+        
+        # Add floor plane
+        self.floor = Plane(subdivisions=(32,32))
+        self.floor.color = color.blue.tint(-.2)  # Slightly darker gray
+        self.floor.texture = 'white_cube'
+        self.floor.texture_scale = (32,32)
 
     def add_object(self, obj: Any) -> None:
         """Create a cube entity for the object in the Ursina scene."""
@@ -42,7 +53,7 @@ class UrsinaEngine(Engine):
             return
         pos = obj.position
         ent.position = pos
-        # Update color if the object’s color might change
+        # Update color if the object's color might change
         col = obj.color
         ent.color = color.rgb(*[int(c*255) for c in col])
         # TODO: update other properties like orientation 
