@@ -57,6 +57,20 @@ The library is structured into several core components for transparency and coll
 
 
 ---
+\## Camera contorls:
+
+* Right mouse button + drag: Pan camera
+* Left mouse button + drag: Rotate camera
+* Middle mouse button + drag: Rotate camera
+* Mouse wheel: Zoom in/out
+* WASD: Move camera
+* QE: Move camera up/down
+* Arrow keys: Rotate camera
+* IJKL: Pan camera
+
+---
+engine = UrsinaEngine(debug=True)  # Enable debug logging
+---
 
 \## Roadmap
 
