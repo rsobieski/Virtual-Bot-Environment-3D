@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Tuple, TYPE_CHECKING
+from typing import Dict, List, Tuple, Optional, Set, TYPE_CHECKING
 import itertools
-from enum import Enum
+from enum import Enum, auto
+from dataclasses import dataclass
 from ursina import Vec3
 
 from vbe_3d.utils.id_manager import next_id
@@ -16,88 +17,178 @@ from vbe_3d.utils.geometry import add_vec
 if TYPE_CHECKING:
     from vbe_3d.core.world import World
 
-# simple enum for connection strength levels
+class RobotState(Enum):
+    """Possible states a robot can be in."""
+    IDLE = auto()
+    MOVING = auto()
+    COLLECTING = auto()
+    REPRODUCING = auto()
+    DEAD = auto()
+
 class ConnectionLevel(Enum):
+    """Connection strength levels between robots."""
     NONE = 0
     WEAK = 1    
     MEDIUM = 2
     STRONG = 3
     PERMANENT = 4
 
+@dataclass
+class RobotStats:
+    """Statistics tracking for a robot."""
+    distance_traveled: float = 0.0
+    resources_collected: int = 0
+    connections_made: int = 0
+    offspring_produced: int = 0
+    energy_consumed: float = 0.0
+    lifetime: int = 0
+
 # global counter for robot IDs
 _robot_id_counter = itertools.count()
 
 class Robot(BaseElement):
-    """A robot (active agent) in the world."""
-    def __init__(self, position=(0,0,0), color=(0.2, 0.8, 0.2), brain=None):
+    """A robot (active agent) in the world.
+    
+    Attributes:
+        id: Unique identifier for the robot
+        energy: Current energy level
+        connections: Dictionary mapping connected robots to connection strength
+        brain: The robot's decision-making system
+        state: Current state of the robot
+        stats: Statistics tracking for the robot
+        max_energy: Maximum energy capacity
+        movement_cost: Energy cost per movement
+        reproduction_threshold: Minimum energy required for reproduction
+    """
+    
+    def __init__(
+        self,
+        position: Tuple[float, float, float] = (0, 0, 0),
+        color: Tuple[float, float, float] = (0.2, 0.8, 0.2),
+        brain: Optional[RobotBrain] = None,
+        max_energy: float = 100.0,
+        movement_cost: float = 1.0,
+        reproduction_threshold: float = 20.0
+    ):
         super().__init__(position, color)
-        self.id = next(_robot_id_counter)     # unique ID
-        # Robot properties
-        self.energy = 100.0   # example property: energy level
-        self.connections: Dict[Robot, int] = {}  # connections to other robots and their strength level (int 0-4)
+        self.id = next(_robot_id_counter)
+        self.energy = max_energy
+        self.max_energy = max_energy
+        self.movement_cost = movement_cost
+        self.reproduction_threshold = reproduction_threshold
+        self.connections: Dict[Robot, int] = {}
+        self.state = RobotState.IDLE
+        self.stats = RobotStats()
+        
         # Initialize brain
         if brain is None:
-            # Default to a simple rule-based brain if none provided
             self.brain = RuleBasedBrain()
         else:
             self.brain = brain
-        self.brain.robot = self  # link brain to this robot
+        self.brain.robot = self
 
-    def perceive(self, world: 'World'):
-        """Gather observations about the world to feed into the brain. 
-        For simplicity, returns a vector of important relative positions and states."""
-        # example observation: vector to nearest resource and nearest robot, plus current energy.
+    def perceive(self, world: 'World') -> List[float]:
+        """Gather observations about the world to feed into the brain.
+        
+        Args:
+            world: The world to perceive.
+            
+        Returns:
+            List of observations including:
+            - Relative position to nearest resource
+            - Relative position to nearest robot
+            - Current energy level (normalized)
+            - Number of connections
+            - Current state
+        """
         obs = []
-        # find nearest static element (resource)
+        
+        # Find nearest resource using spatial indexing if available
         nearest_res = None
         min_dist = float('inf')
-        for e in world.static_elements:
-            dx = e.position[0] - self.position[0]
-            dy = e.position[1] - self.position[1]
-            dz = e.position[2] - self.position[2]
-            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-            if dist < min_dist:
-                min_dist = dist
-                nearest_res = e
-        if nearest_res:
-            # relative position of nearest resource
-            obs += [nearest_res.position[0] - self.position[0],
-                    nearest_res.position[1] - self.position[1],
-                    nearest_res.position[2] - self.position[2]]
+        
+        if hasattr(world, '_get_nearby_objects'):
+            nearby = world._get_nearby_objects(self.position, 10.0)  # Look within 10 units
+            for e in nearby:
+                if hasattr(e, 'resource_value'):
+                    dist = math.dist(self.position, e.position)
+                    if dist < min_dist:
+                        min_dist = dist
+                        nearest_res = e
         else:
-            # no resource found, use zeros
-            obs += [0.0, 0.0, 0.0]
-        # nearest other robot
+            for e in world.static_elements:
+                if hasattr(e, 'resource_value'):
+                    dist = math.dist(self.position, e.position)
+                    if dist < min_dist:
+                        min_dist = dist
+                        nearest_res = e
+                        
+        if nearest_res:
+            obs.extend([
+                nearest_res.position[0] - self.position[0],
+                nearest_res.position[1] - self.position[1],
+                nearest_res.position[2] - self.position[2]
+            ])
+        else:
+            obs.extend([0.0, 0.0, 0.0])
+            
+        # Find nearest robot
         nearest_bot = None
         min_dist = float('inf')
-        for r in world.robots:
-            if r is self: 
-                continue
-            dx = r.position[0] - self.position[0]
-            dy = r.position[1] - self.position[1]
-            dz = r.position[2] - self.position[2]
-            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-            if dist < min_dist:
-                min_dist = dist
-                nearest_bot = r
-        if nearest_bot:
-            obs += [nearest_bot.position[0] - self.position[0],
-                    nearest_bot.position[1] - self.position[1],
-                    nearest_bot.position[2] - self.position[2]]
+        
+        if hasattr(world, '_get_nearby_objects'):
+            nearby = world._get_nearby_objects(self.position, 10.0)
+            for r in nearby:
+                if isinstance(r, Robot) and r is not self:
+                    dist = math.dist(self.position, r.position)
+                    if dist < min_dist:
+                        min_dist = dist
+                        nearest_bot = r
         else:
-            obs += [0.0, 0.0, 0.0]
-        # add its own energy level (normalized perhaps)
-        obs.append(self.energy / 100.0)  # energy scaled
+            for r in world.robots:
+                if r is not self:
+                    dist = math.dist(self.position, r.position)
+                    if dist < min_dist:
+                        min_dist = dist
+                        nearest_bot = r
+                        
+        if nearest_bot:
+            obs.extend([
+                nearest_bot.position[0] - self.position[0],
+                nearest_bot.position[1] - self.position[1],
+                nearest_bot.position[2] - self.position[2]
+            ])
+        else:
+            obs.extend([0.0, 0.0, 0.0])
+            
+        # Add additional observations
+        obs.extend([
+            self.energy / self.max_energy,  # Normalized energy
+            len(self.connections) / 10.0,   # Normalized connection count
+            self.state.value / len(RobotState)  # Normalized state
+        ])
+        
         return obs
 
-    def act(self, action):
-        """Execute an action (e.g., move or other operation). 
-        for simplicity, actions might be movement in one of six directions or no-op."""
-        # define an action space, for example:
-        # 0: no action, 1: move +x, 2: move -x, 3: move +z, 4: move -z, 5: move +y, 6: move -y
+    def act(self, action: int) -> None:
+        """Execute an action based on the brain's decision.
+        
+        Args:
+            action: Integer representing the action to take.
+                  0: no-op
+                  1-6: movement in ±x, ±y, ±z directions
+        """
         if action == 0:
-            return  # no-op
-        step = 1.0  # movement step size
+            self.state = RobotState.IDLE
+            return
+            
+        self.state = RobotState.MOVING
+        step = 1.0
+        
+        # Store old position as tuple instead of Vec3
+        old_pos = (self.position[0], self.position[1], self.position[2])
+        
+        # Movement actions
         if action == 1:
             self.position.x += step
         elif action == 2:
@@ -110,96 +201,159 @@ class Robot(BaseElement):
             self.position.y += step
         elif action == 6:
             self.position.y -= step
-        # could add actions like connecting or disconnecting explicitly, but here movement + proximity triggers connection.
+            
+        # Update statistics
+        self.stats.distance_traveled += math.dist(old_pos, (self.position[0], self.position[1], self.position[2]))
+        self.stats.energy_consumed += self.movement_cost
+        self.stats.lifetime += 1
+        
+        # Consume energy
+        self.energy = max(0.0, self.energy - self.movement_cost)
+        
+        # Check for death
+        if self.energy <= 0:
+            self.state = RobotState.DEAD
 
-        # decrease energy for moving, to simulate consumption
-        if action != 0:
-            self.energy -= 1.0
-        # ensure energy doesn't drop below 0
-        if self.energy < 0:
-            self.energy = 0
-        # if energy hits 0, we might consider the robot "dead" and remove it (not implemented here, but could be)
-
-    def connect(self, other: 'Robot'):
-        """Form or strengthen connection with another robot."""
+    def connect(self, other: 'Robot') -> None:
+        """Form or strengthen connection with another robot.
+        
+        Args:
+            other: The robot to connect with.
+        """
         if other not in self.connections:
-            # Initialize a connection at weak level
             self.connections[other] = ConnectionLevel.WEAK.value
             other.connections[self] = ConnectionLevel.WEAK.value
+            self.stats.connections_made += 1
         else:
-            # Increase connection strength if not permanent
             level = self.connections[other]
             if level < ConnectionLevel.PERMANENT.value:
                 new_level = level + 1
                 self.connections[other] = new_level
                 other.connections[self] = new_level
 
-    def disconnect(self, other: 'Robot'):
-        """Weaken or break connection with another robot if not permanent."""
+    def disconnect(self, other: 'Robot') -> None:
+        """Weaken or break connection with another robot.
+        
+        Args:
+            other: The robot to disconnect from.
+        """
         if other in self.connections:
             level = self.connections[other]
             if level == ConnectionLevel.PERMANENT.value:
-                # permanent connection: do not break (could have special logic to break if certain conditions)
                 return
             if level > ConnectionLevel.WEAK.value:
-                # just reduce connection one level if above weak
                 new_level = level - 1
                 self.connections[other] = new_level
                 other.connections[self] = new_level
             else:
-                # if at weakest level, remove the connection entirely
                 del self.connections[other]
                 if self in other.connections:
                     del other.connections[self]
 
-    def reproduce(self, partner: 'Robot'):
+    def reproduce(self, partner: 'Robot') -> Optional['Robot']:
         """Attempt to create a new robot by combining traits with a partner.
-        returns a new Robot instance or None if reproduction doesn't occur."""
-        # check basic conditions: both have enough energy perhaps
-        if self.energy < 20 or partner.energy < 20:
-            return None  # not enough energy to reproduce
-        # create child with mixed properties
+        
+        Args:
+            partner: The robot to reproduce with.
+            
+        Returns:
+            A new Robot instance or None if reproduction doesn't occur.
+        """
+        if self.energy < self.reproduction_threshold or partner.energy < self.reproduction_threshold:
+            return None
+            
+        self.state = RobotState.REPRODUCING
+        self.stats.offspring_produced += 1
+        
+        # Create child with mixed properties
         child_color = tuple((a+b)/2.0 for a, b in zip(self.color, partner.color))
-        # for brain: combine or choose one parent's brain type
+        
+        # Handle brain inheritance
         if isinstance(self.brain, RLBrain) and isinstance(partner.brain, RLBrain):
-            # if both have RLBrain, we could mix weights (not implemented fully here)
             child_brain = RLBrain()
-            # optionally, average the neural network parameters:
-            child_brain.model.load_state_dict(self.brain.model.state_dict())  # start with one parent's weights
-            # (in practice, one might average the weights or randomly mix layers)
+            # Average the neural network parameters
+            self_params = self.brain.model.state_dict()
+            partner_params = partner.brain.model.state_dict()
+            child_params = {
+                k: (self_params[k] + partner_params[k]) / 2.0
+                for k in self_params.keys()
+            }
+            child_brain.model.load_state_dict(child_params)
         else:
-            # default to a simple brain for the child
             child_brain = RuleBasedBrain()
-        child = Robot(position=(0,0,0), color=child_color, brain=child_brain)
+            
+        child = Robot(
+            position=self.position,
+            color=child_color,
+            brain=child_brain,
+            max_energy=self.max_energy,
+            movement_cost=self.movement_cost,
+            reproduction_threshold=self.reproduction_threshold
+        )
+        
         return child
-    
-    # ––– helpers –––
-    def _nearest_vector(self, elems: List[BaseElement]):
-        min_dist, vec = math.inf, None
-        for e in elems:
-            dvec = (e.position[0] - self.position[0], e.position[1] - self.position[1], e.position[2] - self.position[2])
-            dist = math.dist(self.position, e.position)
-            if dist < min_dist:
-                min_dist, vec = dist, dvec
-        return vec
 
-    # ––– (de)serialization –––
-    def to_dict(self):
+    def collect_resource(self, value: float) -> None:
+        """Collect a resource and update energy.
+        
+        Args:
+            value: The energy value of the collected resource.
+        """
+        self.state = RobotState.COLLECTING
+        self.energy = min(self.max_energy, self.energy + value)
+        self.stats.resources_collected += 1
+
+    def to_dict(self) -> dict:
+        """Convert robot state to dictionary for serialization."""
         return {
             "id": self.id,
             "pos": self.position,
             "col": self.color,
             "energy": self.energy,
+            "max_energy": self.max_energy,
+            "movement_cost": self.movement_cost,
+            "reproduction_threshold": self.reproduction_threshold,
             "connections": [p.id for p in self.connections],
-            "brain": self.brain.export(),
+            "state": self.state.name,
+            "stats": {
+                "distance_traveled": self.stats.distance_traveled,
+                "resources_collected": self.stats.resources_collected,
+                "connections_made": self.stats.connections_made,
+                "offspring_produced": self.stats.offspring_produced,
+                "energy_consumed": self.stats.energy_consumed,
+                "lifetime": self.stats.lifetime
+            },
+            "brain": self.brain.export()
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "Robot":
-        from vbe_3d.brain.factory import brain_from_export  # lazy import
+        """Create a robot from serialized data."""
+        from vbe_3d.brain.factory import brain_from_export
 
         brain = brain_from_export(data["brain"])
-        robot = cls(position=tuple(data["pos"]), color=tuple(data["col"]), brain=brain)
-        robot.id = data["id"]  # restore exact id
+        robot = cls(
+            position=tuple(data["pos"]),
+            color=tuple(data["col"]),
+            brain=brain,
+            max_energy=data.get("max_energy", 100.0),
+            movement_cost=data.get("movement_cost", 1.0),
+            reproduction_threshold=data.get("reproduction_threshold", 20.0)
+        )
+        
+        robot.id = data["id"]
         robot.energy = data["energy"]
+        robot.state = RobotState[data["state"]]
+        
+        # Restore statistics
+        stats = data.get("stats", {})
+        robot.stats = RobotStats(
+            distance_traveled=stats.get("distance_traveled", 0.0),
+            resources_collected=stats.get("resources_collected", 0),
+            connections_made=stats.get("connections_made", 0),
+            offspring_produced=stats.get("offspring_produced", 0),
+            energy_consumed=stats.get("energy_consumed", 0.0),
+            lifetime=stats.get("lifetime", 0)
+        )
+        
         return robot

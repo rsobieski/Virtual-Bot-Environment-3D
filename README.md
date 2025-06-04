@@ -33,6 +33,7 @@ The library is structured into several core components for transparency and coll
 * **Robot (Dynamic Element):** The Robot class (a subclass of a generic BaseElement) represents an active agent in the world. Each robot should has:
     * Properties/State: e.g. position in the world, velocity, energy level, color, unique ID, and possibly a “goal” or imperative defining its objective.
     * Connections: a record of links to other robots with a certain strength level. It is define as a numeric level for connection strength (0 = none, 1 = weak, 2 = medium, 3 = strong, 4 = permanent). Robots can form connections when in proximity, and these can strengthen over time or break if they separate. (In this version, it is implement a basic proximity-based connection; the framework allows extending this to more complex bonding behavior and negotiation protocols).
+    * Robot State: it is define current state of robot, we have here enum to track it (IDLE, MOVING, COLLECTING, REPRODUCING, DEAD) and dataclass for tracking it.
     * Brain/Logic: Each robot has a RobotBrain component that decides its actions. This could be a simple rule-based brain (pre-programmed behavior) or a learned brain (RL policy network). The robot’s “intelligence” is thus pluggable – one can equip different robots with different brains. This also allows hybrid scenarios where some robots are manually scripted and others learn via ML. Additional models are planned for future versions/
 
 * **Static Element:** We also define a StaticElement (or Resource) class for objects in the world that are not agents – for example, a resource block that a robot can utilize (like an energy source or building material). Static elements have properties (like amount of resource) and basic logic (they might do nothing on their own, or have simple rules like “decrease resource when a robot takes it”). They inherit from the same base class as Robot but typically have no active brain (or a no-op brain). This keeps the environment extensible – eventually, even these could be given ML models for more complex behavior, but by default they remain simple.
@@ -59,6 +60,7 @@ The library is structured into several core components for transparency and coll
 
 \## Roadmap
 
+* [ ] Camera controls for better user interaction.
 * [ ] WebGL renderer (Three.js) for browser demos.
 * [ ] Physics integration (Panda3D Bullet or PyBullet).
 * [ ] Multi‑agent RL via PettingZoo API.
