@@ -9,7 +9,7 @@ The framework is written in Python, is intended to be designed as fully open‑s
 This is an experimental project in which I wanted to bring together several concepts I've recently had the opportunity to work with and explore. For simplicity, this version uses cube-based bots for visualization, which might resemble Minecraft, but that's merely a superficial similarity resulting from the ease of presenting the environment.
 
 ---
-## Key Features
+## Key Features:
 
 |  Category               |  Highlights                                                                                                        |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -22,7 +22,7 @@ This is an experimental project in which I wanted to bring together several conc
 | **Swappable parts**     | Swap 3‑D engines, brains, physics, or genetics without touching *core* logic.                                      |
 
 ---
-## Architecture Overview
+## Architecture Overview:
 
 The library is structured into several core components for transparency and collaborative development:
 
@@ -83,11 +83,12 @@ python ./examples/camera_minimal_test.py
 
 ---
 ## Debug mode:
-
+```
 engine = UrsinaEngine(debug=True)  # Enable debug logging
+```
 
 ---
-## Roadmap
+## Roadmap:
 
 * [X] Camera controls for better user interaction.
 * [ ] WebGL renderer (Three.js) for browser demos.
@@ -98,7 +99,7 @@ engine = UrsinaEngine(debug=True)  # Enable debug logging
 * [ ] Ability to control each robot via a dedicated API Endpoint.
 
 ---
-## License
+## License:
 
 Virtual Bot Enviroment 3D is released under the **MIT License** — see [`LICENSE`](https://github.com/rsobieski/Virtual-Bot-Environment-3D/blob/main/LICENSE) for details.
 
