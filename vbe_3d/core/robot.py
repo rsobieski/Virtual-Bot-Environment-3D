@@ -185,8 +185,8 @@ class Robot(BaseElement):
         self.state = RobotState.MOVING
         step = 1.0
         
-        # Store old position as tuple instead of Vec3
-        old_pos = (self.position[0], self.position[1], self.position[2])
+        # Store old position as Vec3
+        old_pos = Vec3(self.position)
         
         # Movement actions
         if action == 1:
@@ -203,7 +203,10 @@ class Robot(BaseElement):
             self.position.y -= step
             
         # Update statistics
-        self.stats.distance_traveled += math.dist(old_pos, (self.position[0], self.position[1], self.position[2]))
+        self.stats.distance_traveled += math.dist(
+            (old_pos.x, old_pos.y, old_pos.z),
+            (self.position.x, self.position.y, self.position.z)
+        )
         self.stats.energy_consumed += self.movement_cost
         self.stats.lifetime += 1
         

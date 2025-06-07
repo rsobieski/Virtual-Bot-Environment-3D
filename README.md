@@ -55,18 +55,33 @@ The library is structured into several core components for transparency and coll
 
 * **State Saving/Loading:** The World class provides methods to save the current state to a JSON file and to load from a file. This includes all necessary information to reconstruct the world: each object’s type, position, properties (energy, color, etc.), and connections, as well as any time counters relevant (like how long connections have lasted if needed). This feature is crucial for long-running simulations and collaborative development (teams can share a world snapshot that reproduces an interesting scenario or bug). It also helps in training workflows – one could save the state of a simulation and resume training an RL agent from that point, or evaluate it later. The JSON format ensures the saved state is human-readable and easily version-controlled if placed in a repository.
 
+---
+\## How to run:
+
+Clone the repo and install dependencies from requirements.txt.
+    
+```
+pip install -r requirements.txt
+```
+Run an example
+
+```
+python ./examples/run_demo.py
+```
+In case of problems you can check if the 3D environment starts correctly using this example:
+
+```
+python ./examples/camera_minimal_test.py
+```
 
 ---
 \## Camera contorls:
 
-* Right mouse button + drag: Pan camera
-* Left mouse button + drag: Rotate camera
+* Right mouse button + keys QWEASD: Move/Pan camera
 * Middle mouse button + drag: Rotate camera
 * Mouse wheel: Zoom in/out
 * WASD: Move camera
 * QE: Move camera up/down
-* Arrow keys: Rotate camera
-* IJKL: Pan camera
 
 ---
 engine = UrsinaEngine(debug=True)  # Enable debug logging
@@ -74,7 +89,7 @@ engine = UrsinaEngine(debug=True)  # Enable debug logging
 
 \## Roadmap
 
-* [ ] Camera controls for better user interaction.
+* [X] Camera controls for better user interaction.
 * [ ] WebGL renderer (Three.js) for browser demos.
 * [ ] Physics integration (Panda3D Bullet or PyBullet).
 * [ ] Multi‑agent RL via PettingZoo API.

@@ -5,6 +5,7 @@ import math
 from typing import List, Dict, Set, Optional, Tuple, TYPE_CHECKING, Any
 from dataclasses import dataclass
 from enum import Enum
+from ursina import Vec3
 
 from vbe_3d.engine.base import Engine
 from vbe_3d.core.robot import Robot
@@ -149,6 +150,13 @@ class World:
                 robot.act(action)
             except Exception as e:
                 print(f"Error processing robot {robot.id}: {e}")
+                print(f"Robot position type: {type(robot.position)}")
+                print(f"Robot position value: {robot.position}")
+                print(f"Robot state: {robot.state}")
+                print(f"Last action: {action}")
+                import traceback
+                print("Full traceback:")
+                print(traceback.format_exc())
                 
         # Handle interactions between objects
         self._handle_interactions()
@@ -184,8 +192,8 @@ class World:
                     try:
                         child = r.reproduce(partner)
                         if child:
-                            px, py, pz = r.position
-                            child.position = (px + 1, py, pz)
+                            # Create new Vec3 position offset from parent
+                            child.position = Vec3(r.position.x + 1, r.position.y, r.position.z)
                             self.add_robot(child)
                             r.energy *= 0.5
                             partner.energy *= 0.5
