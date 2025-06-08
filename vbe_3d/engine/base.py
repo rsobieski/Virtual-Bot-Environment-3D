@@ -1,25 +1,47 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 # Engine interface abstraction
-class Engine(ABC):
-    """Abstract Engine for 3D visualization and simulation."""
+class BaseEngine(ABC):
+    """Base class for all visualization engines."""
+    
     @abstractmethod
     def add_object(self, obj: Any) -> None:
-        """Add a visual representation of the object to the scene."""
+        """Create a visual entity for the object in the scene.
+        
+        Args:
+            obj: The object to visualize. Must have position and color attributes.
+        """
         pass
-
+    
     @abstractmethod
     def remove_object(self, obj: Any) -> None:
-        """Remove the object's visualization from the scene."""
+        """Destroy the object's entity in the scene.
+        
+        Args:
+            obj: The object to remove.
+        """
         pass
-
+    
     @abstractmethod
     def update_object(self, obj: Any) -> None:
-        """Update the visual representation (position/color) of the object."""
+        """Update the visual entity to match the object's state.
+        
+        Args:
+            obj: The object to update.
+        """
         pass
-
+    
     @abstractmethod
     def run(self, world: Any) -> None:
-        """Start the real-time rendering loop (if applicable)."""
+        """Start the visualization loop.
+        
+        Args:
+            world: The world to visualize.
+        """
+        pass
+    
+    @abstractmethod
+    def cleanup(self) -> None:
+        """Clean up resources when the engine is no longer needed."""
         pass

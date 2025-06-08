@@ -9,6 +9,7 @@ from ursina import (
 if TYPE_CHECKING:
     from vbe_3d.core.world import World
 
+from .base import BaseEngine
 
 class ModelType:
     """Available 3D model types for objects."""
@@ -59,7 +60,7 @@ class WorldUpdater(Entity):
             print(f"Error in simulation step: {e}")
 
 
-class UrsinaEngine:
+class UrsinaEngine(BaseEngine):
     """Ursina-based 3D visualization engine implementation.
     
     This engine uses Ursina (built on Panda3D) to provide 3D visualization
@@ -76,7 +77,7 @@ class UrsinaEngine:
             debug: Whether to enable debug logging for key presses.
         """       
         # Enable development mode for EditorCamera
-        self.app = Ursina(borderless=borderless, development_mode=True)  # Add development_mode
+        self.app = Ursina(borderless=borderless, development_mode=True)
         
         self.entities: Dict[Any, Entity] = {}
         self.debug = debug
@@ -237,5 +238,5 @@ class UrsinaEngine:
         if hasattr(self, 'editor_camera') and self.editor_camera:
             destroy(self.editor_camera)
             self.editor_camera = None
-        if hasattr(self, 'app'):
-            self.app.destroy()
+        if self.app:
+            self.app.quit()

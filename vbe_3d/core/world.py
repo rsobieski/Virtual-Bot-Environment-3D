@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 import math
 from typing import List, Dict, Set, Optional, Tuple, TYPE_CHECKING, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from ursina import Vec3
 
-from vbe_3d.engine.base import Engine
-from vbe_3d.core.robot import Robot
+from vbe_3d.engine.base import BaseEngine
+from vbe_3d.core.robot import Robot, RobotState
 from vbe_3d.core.static_element import StaticElement
 from vbe_3d.brain.rl_brain import RLBrain
 from vbe_3d.brain.rule_based import RuleBasedBrain
@@ -33,18 +33,29 @@ class Interaction:
     target: Any
     strength: float = 1.0
 
+@dataclass
+class WorldStats:
+    """Statistics tracking for the world."""
+    steps: int = 0
+    robots_created: int = 0
+    robots_destroyed: int = 0
+    resources_collected: int = 0
+    connections_made: int = 0
+    offspring_produced: int = 0
+
 class World:
-    """Simulation world containing robots and static elements, and managing their interactions."""
+    """The main world container for robots and static elements."""
     
-    def __init__(self, engine: Engine):
-        """Initialize the world with a rendering engine.
+    def __init__(self, engine: BaseEngine):
+        """Initialize the world.
         
         Args:
-            engine: The rendering/physics engine to use for visualization.
+            engine: The visualization engine to use.
         """
         self.engine = engine
         self.robots: List[Robot] = []
         self.static_elements: List[StaticElement] = []
+        self.stats = WorldStats()
         self.time_step = 0
         self._interaction_cache: Dict[Tuple[int, int], Interaction] = {}
         self._spatial_index: Dict[Tuple[int, int, int], Set[Any]] = {}
@@ -82,35 +93,15 @@ class World:
         return nearby
 
     def add_robot(self, robot: Robot) -> None:
-        """Add a robot to the world and spawn its visual representation.
+        """Add a robot to the world.
         
         Args:
-            robot: The robot to add to the world.
-            
-        Raises:
-            ValueError: If the robot is already in the world.
+            robot: The robot to add.
         """
-        if robot in self.robots:
-            raise ValueError("Robot already exists in world")
         self.robots.append(robot)
         self.engine.add_object(robot)
-        robot.world = self
-
-    def add_static(self, element: StaticElement) -> None:
-        """Add a static element (resource or obstacle) to the world.
+        self.stats.robots_created += 1
         
-        Args:
-            element: The static element to add.
-            
-        Raises:
-            ValueError: If the element is already in the world.
-        """
-        if element in self.static_elements:
-            raise ValueError("Static element already exists in world")
-        self.static_elements.append(element)
-        self.engine.add_object(element)
-        element.world = self
-
     def remove_robot(self, robot: Robot) -> None:
         """Remove a robot from the world.
         
@@ -120,11 +111,17 @@ class World:
         if robot in self.robots:
             self.robots.remove(robot)
             self.engine.remove_object(robot)
-            # Clean up connections
-            for r in self.robots:
-                if robot in r.connections:
-                    del r.connections[robot]
-
+            self.stats.robots_destroyed += 1
+            
+    def add_static(self, element: StaticElement) -> None:
+        """Add a static element to the world.
+        
+        Args:
+            element: The static element to add.
+        """
+        self.static_elements.append(element)
+        self.engine.add_object(element)
+        
     def remove_static(self, element: StaticElement) -> None:
         """Remove a static element from the world.
         
@@ -134,71 +131,105 @@ class World:
         if element in self.static_elements:
             self.static_elements.remove(element)
             self.engine.remove_object(element)
-
+            
     def step(self) -> None:
-        """Advance the simulation by one time step (tick)."""
-        self.time_step += 1
+        """Advance the world simulation by one step."""
+        self.stats.steps += 1
         
-        # Update spatial index for proximity queries
-        self._update_spatial_index()
-        
-        # Process each robot's actions
-        for robot in list(self.robots):
-            try:
-                observation = robot.perceive(self)
-                action = robot.brain.decide_action(observation)
-                robot.act(action)
-            except Exception as e:
-                print(f"Error processing robot {robot.id}: {e}")
-                print(f"Robot position type: {type(robot.position)}")
-                print(f"Robot position value: {robot.position}")
-                print(f"Robot state: {robot.state}")
-                print(f"Last action: {action}")
-                import traceback
-                print("Full traceback:")
-                print(traceback.format_exc())
+        # Update robots
+        for robot in self.robots[:]:  # Copy list to allow removal during iteration
+            if robot.state == RobotState.DEAD:
+                self.remove_robot(robot)
+                continue
                 
-        # Handle interactions between objects
-        self._handle_interactions()
-
-    def _handle_interactions(self) -> None:
-        """Handle interactions between objects: collisions, connections, resource usage, reproduction."""
-        # Process robot-robot interactions
-        for i, r1 in enumerate(self.robots):
-            nearby = self._get_nearby_objects(r1.position, 1.1)
-            for r2 in nearby:
-                if isinstance(r2, Robot) and r2 != r1:
-                    dist = math.dist(r1.position, r2.position)
-                    if dist < 1.1:
-                        r1.connect(r2)
-                    else:
-                        r1.disconnect(r2)
+            # Get robot's perception of the world
+            obs = robot.perceive(self)
+            
+            # Get action from brain
+            action = robot.brain.decide_action(obs)
+            
+            # Execute action
+            robot.act(action)
+            
+            # Update visualization
+            self.engine.update_object(robot)
+            
+            # Check for resource collection
+            for element in self.static_elements:
+                if math.dist(robot.position, element.position) < 1.0:
+                    robot.collect_resource(element.resource_value)
+                    self.stats.resources_collected += 1
+                    self.engine.update_object(robot)
+                    
+            # Check for robot connections
+            for other in self.robots:
+                if other != robot and math.dist(robot.position, other.position) < 2.0:
+                    robot.connect(other)
+                    self.stats.connections_made += 1
+                    
+            # Check for reproduction
+            for other in self.robots:
+                if other != robot and math.dist(robot.position, other.position) < 1.0:
+                    child = robot.reproduce(other)
+                    if child:
+                        self.add_robot(child)
+                        self.stats.offspring_produced += 1
                         
-        # Process robot-static interactions
-        for robot in self.robots:
-            nearby = self._get_nearby_objects(robot.position, 0.5)
-            for elem in nearby:
-                if isinstance(elem, StaticElement):
-                    dist = math.dist(robot.position, elem.position)
-                    if dist < 0.5:
-                        if hasattr(elem, 'resource_value'):
-                            robot.energy += elem.resource_value
-                        self.remove_static(elem)
-                        
-        # Handle reproduction
-        for r in list(self.robots):
-            for partner, conn_level in r.connections.items():
-                if conn_level >= 3 and self.time_step % 50 == 0:
-                    try:
-                        child = r.reproduce(partner)
-                        if child:
-                            # Create new Vec3 position offset from parent
-                            child.position = Vec3(r.position.x + 1, r.position.y, r.position.z)
-                            self.add_robot(child)
-                            r.energy *= 0.5
-                            partner.energy *= 0.5
-                    except Exception as e:
-                        print(f"Error during reproduction: {e}")
+    def to_dict(self) -> dict:
+        """Convert world state to dictionary for serialization."""
+        return {
+            "robots": [robot.to_dict() for robot in self.robots],
+            "static_elements": [
+                {
+                    "position": element.position,
+                    "color": element.color,
+                    "resource_value": element.resource_value
+                }
+                for element in self.static_elements
+            ],
+            "stats": {
+                "steps": self.stats.steps,
+                "robots_created": self.stats.robots_created,
+                "robots_destroyed": self.stats.robots_destroyed,
+                "resources_collected": self.stats.resources_collected,
+                "connections_made": self.stats.connections_made,
+                "offspring_produced": self.stats.offspring_produced
+            }
+        }
+        
+    @classmethod
+    def from_dict(cls, data: dict, engine: BaseEngine) -> "World":
+        """Create a world from serialized data."""
+        from vbe_3d.core.robot import Robot
+        
+        world = cls(engine)
+        
+        # Restore robots
+        for robot_data in data["robots"]:
+            robot = Robot.from_dict(robot_data)
+            world.add_robot(robot)
+            
+        # Restore static elements
+        for element_data in data["static_elements"]:
+            element = StaticElement(
+                position=tuple(element_data["position"]),
+                color=tuple(element_data["color"]),
+                resource_value=element_data["resource_value"]
+            )
+            world.add_static(element)
+            
+        # Restore statistics
+        stats = data.get("stats", {})
+        world.stats = WorldStats(
+            steps=stats.get("steps", 0),
+            robots_created=stats.get("robots_created", 0),
+            robots_destroyed=stats.get("robots_destroyed", 0),
+            resources_collected=stats.get("resources_collected", 0),
+            connections_made=stats.get("connections_made", 0),
+            offspring_produced=stats.get("offspring_produced", 0)
+        )
+        
+        return world
 
     def save_state(self, filepath: str) -> None:
         """Save the current world state to a JSON file.
