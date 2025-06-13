@@ -12,7 +12,6 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from vbe_3d.engine.webgl_engine import WebGLEngine
-from vbe_3d.engine.ursina_engine import UrsinaEngine
 from vbe_3d.core.world import World
 from vbe_3d.core.robot import Robot
 from vbe_3d.core.static_element import StaticElement
@@ -24,6 +23,11 @@ async def run_webgl_demo():
     
     # Initialize WebGL engine
     engine = WebGLEngine()
+    
+    # Start the engine and wait for WebSocket server
+    await engine.start()
+    
+    # Create world
     world = World(engine)
     
     # Add static elements matching run_demo.py
@@ -49,13 +53,18 @@ async def run_webgl_demo():
     try:
         # Run simulation continuously
         while True:
+            # Step the world simulation
             world.step()
             
-            # Update robot positions in visualization
-            engine.update_object(robot1)
-            engine.update_object(robot2)
+            # Update all objects in the visualization
+            for obj in list(engine.entities.keys()):
+                engine.update_object(obj)
             
-            await asyncio.sleep(0.1)  # Add small delay between steps
+            # Wait for messages to be processed
+            await engine.message_queue.join()
+            
+            # Add small delay between steps
+            await asyncio.sleep(0.1)
             
     except KeyboardInterrupt:
         print("\nDemo interrupted by user")

@@ -35,6 +35,7 @@ class WebSocketServer:
         Args:
             websocket: The WebSocket connection.
         """
+        print(f"New WebSocket client connected. Total clients: {len(self.clients) + 1}")
         self.clients.add(websocket)
         try:
             async for message in websocket:
@@ -42,6 +43,7 @@ class WebSocketServer:
                 pass
         finally:
             self.clients.remove(websocket)
+            print(f"WebSocket client disconnected. Remaining clients: {len(self.clients)}")
             
     async def broadcast(self, message: Dict[str, Any]):
         """Broadcast a message to all connected clients.
@@ -50,9 +52,11 @@ class WebSocketServer:
             message: The message to broadcast.
         """
         if not self.clients:
+            print("No WebSocket clients connected")
             return
             
         message_str = json.dumps(message)
+        print(f"Broadcasting to {len(self.clients)} clients: {message_str}")
         await asyncio.gather(
             *[client.send(message_str) for client in self.clients]
         ) 

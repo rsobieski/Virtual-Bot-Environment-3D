@@ -20,7 +20,9 @@ function createGround() {
     const groundMaterial = new THREE.MeshPhongMaterial({
         color: 0x808080,  // Gray color
         side: THREE.DoubleSide,
-        flatShading: true
+        flatShading: true,
+        transparent: true,
+        opacity: 0.5 // 50% transparency
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     

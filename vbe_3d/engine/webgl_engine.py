@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from .websocket_server import WebSocketServer
 from .base import BaseEngine
 import os
+import time
 
 def vec3_to_list(vec3_or_tuple):
     """Convert a Vec3 object or tuple to a list of coordinates."""
@@ -53,12 +54,26 @@ class WebGLEngine(BaseEngine):
         self.server_thread.daemon = True
         self.server_thread.start()
         
-        # Start WebSocket server and message processor
-        self.loop.create_task(self._start_ws_server())
+        # Start message processor
         self.loop.create_task(self._process_messages())
+    
+    async def start(self):
+        """Start the engine and open the browser."""
+        # Start WebSocket server
+        await self._start_ws_server()
+        
+        # Wait a moment for the server to be ready
+        await asyncio.sleep(1)
         
         # Open browser
-        webbrowser.open(f"http://localhost:{port}")
+        webbrowser.open(f"http://localhost:{self.port}")
+        
+        # Wait for a client to connect
+        while not self.ws_server.clients:
+            print("Waiting for WebSocket client to connect...")
+            await asyncio.sleep(0.1)
+        
+        print("WebSocket client connected, starting simulation...")
     
     def _start_server(self):
         """Start the web server."""
@@ -78,7 +93,11 @@ class WebGLEngine(BaseEngine):
         while True:
             message = await self.message_queue.get()
             try:
-                await self.ws_server.broadcast(message)
+                if self.ws_server.clients:
+                    print(f"Sending WebSocket message: {message}")
+                    await self.ws_server.broadcast(message)
+                else:
+                    print("No WebSocket clients connected, skipping message")
             except Exception as e:
                 print(f"Warning: Failed to send message: {e}")
             finally:
@@ -105,16 +124,18 @@ class WebGLEngine(BaseEngine):
             }
 
             # Queue add message
+            message = {
+                'type': 'add',
+                'id': id(obj),
+                'position': pos,
+                'color': col,
+                'model_type': model_type,
+                'scale': scale
+            }
+            print(f"Adding object: {message}")
             self.loop.call_soon_threadsafe(
                 self.message_queue.put_nowait,
-                {
-                    'type': 'add',
-                    'id': id(obj),
-                    'position': pos,
-                    'color': col,
-                    'model_type': model_type,
-                    'scale': scale
-                }
+                message
             )
 
         except Exception as e:
@@ -124,12 +145,14 @@ class WebGLEngine(BaseEngine):
         """Destroy the object's entity in the WebGL scene."""
         if obj in self.entities:
             # Queue remove message
+            message = {
+                'type': 'remove',
+                'id': id(obj)
+            }
+            print(f"Removing object: {message}")
             self.loop.call_soon_threadsafe(
                 self.message_queue.put_nowait,
-                {
-                    'type': 'remove',
-                    'id': id(obj)
-                }
+                message
             )
             del self.entities[obj]
 
@@ -150,16 +173,18 @@ class WebGLEngine(BaseEngine):
                 entity_data['scale'] = obj.scale
 
             # Queue update message
+            message = {
+                'type': 'update',
+                'id': id(obj),
+                'position': entity_data['position'],
+                'color': entity_data['color'],
+                'rotation': entity_data.get('rotation'),
+                'scale': entity_data.get('scale')
+            }
+            print(f"Updating object: {message}")
             self.loop.call_soon_threadsafe(
                 self.message_queue.put_nowait,
-                {
-                    'type': 'update',
-                    'id': id(obj),
-                    'position': entity_data['position'],
-                    'color': entity_data['color'],
-                    'rotation': entity_data.get('rotation'),
-                    'scale': entity_data.get('scale')
-                }
+                message
             )
 
         except Exception as e:
