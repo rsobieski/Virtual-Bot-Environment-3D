@@ -1,9 +1,21 @@
-from importlib.metadata import version
+"""Virtual Bot Environment 3D - A 3D visualization environment for robot simulation."""
 
-__all__ = ["World", "Robot", "StaticElement", "UrsinaEngine"]
-__version__ = version("vbe_3d")
-
-from .core.world import World
-from .core.robot import Robot
+from .engine import BaseEngine, UrsinaEngine, WebGLEngine
+from .core.robot import Robot, RobotState
 from .core.static_element import StaticElement
-from .engine.ursina_engine import UrsinaEngine
+from .core.world import World, WorldStats
+from .brain.rl_brain import RLBrain
+
+__version__ = '0.1.0'
+
+__all__ = [
+    'BaseEngine',
+    'UrsinaEngine',
+    'WebGLEngine',
+    'Robot',
+    'RobotState',
+    'StaticElement',
+    'World',
+    'WorldStats',
+    'RLBrain',
+]

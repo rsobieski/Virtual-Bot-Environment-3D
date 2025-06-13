@@ -1,5 +1,9 @@
 """Minimal live demo – run and move two robots."""
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from vbe_3d.engine.ursina_engine import UrsinaEngine
 from vbe_3d.core.world import World
 from vbe_3d.core.robot import Robot

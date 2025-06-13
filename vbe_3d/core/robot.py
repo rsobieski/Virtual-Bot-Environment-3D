@@ -185,28 +185,29 @@ class Robot(BaseElement):
         self.state = RobotState.MOVING
         step = 1.0
         
-        # Store old position as Vec3
-        old_pos = Vec3(self.position)
+        # Store old position
+        old_pos = self.position
         
         # Movement actions
+        x, y, z = self.position
         if action == 1:
-            self.position.x += step
+            x += step
         elif action == 2:
-            self.position.x -= step
+            x -= step
         elif action == 3:
-            self.position.z += step
+            z += step
         elif action == 4:
-            self.position.z -= step
+            z -= step
         elif action == 5:
-            self.position.y += step
+            y += step
         elif action == 6:
-            self.position.y -= step
+            y -= step
+            
+        # Update position
+        self.position = (x, y, z)
             
         # Update statistics
-        self.stats.distance_traveled += math.dist(
-            (old_pos.x, old_pos.y, old_pos.z),
-            (self.position.x, self.position.y, self.position.z)
-        )
+        self.stats.distance_traveled += math.dist(old_pos, self.position)
         self.stats.energy_consumed += self.movement_cost
         self.stats.lifetime += 1
         
