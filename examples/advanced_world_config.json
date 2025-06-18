@@ -1,0 +1,85 @@
+{
+  "world": {
+    "name": "Advanced Demo World",
+    "description": "A more complex world with various resource types and robot behaviors",
+    "simulation": {
+      "time_step": 0.1,
+      "max_steps": 2000
+    }
+  },
+  "static_elements": [
+    {
+      "position": [5, 0, 0],
+      "color": [1, 0, 1],
+      "resource_value": 40,
+      "resource_type": "ENERGY",
+      "decay_rate": 0.1,
+      "respawn_time": 100,
+      "max_uses": 3,
+      "is_obstacle": false,
+      "is_collectible": true
+    },
+    {
+      "position": [0, 0, 5],
+      "color": [1, 1, 0],
+      "resource_value": 30,
+      "resource_type": "ENERGY",
+      "decay_rate": 0.0,
+      "respawn_time": null,
+      "max_uses": null,
+      "is_obstacle": false,
+      "is_collectible": true
+    },
+    {
+      "position": [-5, 0, 0],
+      "color": [0, 0, 1],
+      "resource_value": 50,
+      "resource_type": "MATERIAL",
+      "decay_rate": 0.0,
+      "respawn_time": null,
+      "max_uses": 1,
+      "is_obstacle": false,
+      "is_collectible": true
+    },
+    {
+      "position": [0, 0, -5],
+      "color": [0.5, 0.5, 0.5],
+      "resource_value": 0,
+      "resource_type": "ENERGY",
+      "decay_rate": 0.0,
+      "respawn_time": null,
+      "max_uses": null,
+      "is_obstacle": true,
+      "is_collectible": false
+    }
+  ],
+  "robots": [
+    {
+      "position": [0, 0, 0],
+      "color": [1, 0, 0],
+      "brain_type": "RuleBasedBrain",
+      "max_energy": 100.0,
+      "movement_cost": 1.0,
+      "reproduction_threshold": 20.0,
+      "name": "Red Explorer"
+    },
+    {
+      "position": [2, 0, 0],
+      "color": [0, 1, 0],
+      "brain_type": "RLBrain",
+      "max_energy": 120.0,
+      "movement_cost": 0.8,
+      "reproduction_threshold": 25.0,
+      "name": "Green Learner"
+    },
+    {
+      "position": [-2, 0, 0],
+      "color": [0, 0, 1],
+      "brain_type": "RuleBasedBrain",
+      "max_energy": 80.0,
+      "movement_cost": 1.2,
+      "reproduction_threshold": 15.0,
+      "name": "Blue Worker"
+    }
+  ]
+} 

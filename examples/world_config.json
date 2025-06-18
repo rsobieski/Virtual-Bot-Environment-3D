@@ -1,0 +1,54 @@
+{
+  "world": {
+    "name": "Demo World",
+    "description": "A simple demo world with robots and resources",
+    "simulation": {
+      "time_step": 0.1,
+      "max_steps": 1000
+    }
+  },
+  "static_elements": [
+    {
+      "position": [5, 0, 0],
+      "color": [1, 0, 1],
+      "resource_value": 40,
+      "resource_type": "ENERGY",
+      "decay_rate": 0.0,
+      "respawn_time": null,
+      "max_uses": null,
+      "is_obstacle": false,
+      "is_collectible": true
+    },
+    {
+      "position": [0, 0, 5],
+      "color": [1, 1, 0],
+      "resource_value": 30,
+      "resource_type": "ENERGY",
+      "decay_rate": 0.0,
+      "respawn_time": null,
+      "max_uses": null,
+      "is_obstacle": false,
+      "is_collectible": true
+    }
+  ],
+  "robots": [
+    {
+      "position": [0, 0, 0],
+      "color": [1, 0, 0],
+      "brain_type": "RuleBasedBrain",
+      "max_energy": 100.0,
+      "movement_cost": 1.0,
+      "reproduction_threshold": 20.0,
+      "name": "Red Robot"
+    },
+    {
+      "position": [2, 0, 0],
+      "color": [0, 1, 0],
+      "brain_type": "RLBrain",
+      "max_energy": 100.0,
+      "movement_cost": 1.0,
+      "reproduction_threshold": 20.0,
+      "name": "Green Robot"
+    }
+  ]
+} 

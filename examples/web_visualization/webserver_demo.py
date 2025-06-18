@@ -4,6 +4,7 @@ import asyncio
 import time
 import sys
 import json
+import os
 from pathlib import Path
 
 # Add the project root to Python path
@@ -11,15 +12,20 @@ project_root = str(Path(__file__).parent.parent.parent)
 if project_root not in sys.path:
     sys.path.append(project_root)
 
+# Add the examples directory to Python path for config_loader
+examples_dir = str(Path(__file__).parent.parent)
+if examples_dir not in sys.path:
+    sys.path.append(examples_dir)
+
 from vbe_3d.engine.webgl_engine import WebGLEngine
-from vbe_3d.core.world import World
-from vbe_3d.core.robot import Robot
-from vbe_3d.core.static_element import StaticElement
-from vbe_3d.brain.rl_brain import RLBrain
+from config_loader import ConfigLoader
 
 async def run_webgl_demo():
     """Run the WebGL visualization demo."""
     print("Starting WebGL demo...")
+    
+    # Get the path to the configuration file
+    config_path = os.path.join(os.path.dirname(__file__), "..", "world_config.json")
     
     # Initialize WebGL engine
     engine = WebGLEngine()
@@ -27,28 +33,8 @@ async def run_webgl_demo():
     # Start the engine and wait for WebSocket server
     await engine.start()
     
-    # Create world
-    world = World(engine)
-    
-    # Add static elements matching run_demo.py
-    static1 = StaticElement(position=(5, 0, 0), color=(1, 0, 1), resource_value=40)
-    static2 = StaticElement(position=(0, 0, 5), color=(1, 1, 0), resource_value=30)
-    
-    world.add_static(static1)
-    world.add_static(static2)
-    
-    # Add robots matching run_demo.py
-    robot1 = Robot(position=(0, 0, 0), color=(1, 0, 0))
-    robot2 = Robot(position=(2, 0, 0), color=(0, 1, 0), brain=RLBrain())
-    
-    world.add_robot(robot1)
-    world.add_robot(robot2)
-    
-    # Add objects to visualization
-    engine.add_object(static1)
-    engine.add_object(static2)
-    engine.add_object(robot1)
-    engine.add_object(robot2)
+    # Create world from configuration
+    world = ConfigLoader.create_world_from_config(engine, config_path)
     
     try:
         # Run simulation continuously
