@@ -79,6 +79,7 @@ class Robot(BaseElement):
         self.connections: Dict[Robot, int] = {}
         self.state = RobotState.IDLE
         self.stats = RobotStats()
+        self.reproduction_cooldown = 0  # Cooldown timer for reproduction
         
         # Initialize brain
         if brain is None:
@@ -203,8 +204,8 @@ class Robot(BaseElement):
         elif action == 6:
             y -= step
             
-        # Update position
-        self.position = (x, y, z)
+        # Update position - convert back to Vec3
+        self.position = Vec3(x, y, z)
             
         # Update statistics
         self.stats.distance_traveled += math.dist(old_pos, self.position)
@@ -263,11 +264,28 @@ class Robot(BaseElement):
         Returns:
             A new Robot instance or None if reproduction doesn't occur.
         """
+        # Check cooldown
+        if self.reproduction_cooldown > 0 or partner.reproduction_cooldown > 0:
+            return None
+            
         if self.energy < self.reproduction_threshold or partner.energy < self.reproduction_threshold:
+            return None
+            
+        # Consume energy for reproduction
+        reproduction_cost = self.reproduction_threshold * 0.5  # Consume half the threshold
+        self.energy = max(0.0, self.energy - reproduction_cost)
+        partner.energy = max(0.0, partner.energy - reproduction_cost)
+        
+        # Check if we still have enough energy after consumption
+        if self.energy <= 0 or partner.energy <= 0:
             return None
             
         self.state = RobotState.REPRODUCING
         self.stats.offspring_produced += 1
+        
+        # Set cooldown for both robots
+        self.reproduction_cooldown = 10  # 10 steps cooldown
+        partner.reproduction_cooldown = 10
         
         # Create child with mixed properties
         child_color = tuple((a+b)/2.0 for a, b in zip(self.color, partner.color))

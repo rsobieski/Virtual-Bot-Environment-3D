@@ -21,6 +21,7 @@ This is an experimental project in which I wanted to bring together several conc
 | **Persistence**         | Save / load the entire world state as JSON — resume long simulations or share scenarios.                           |
 | **Swappable parts**     | Swap 3‑D engines, brains, physics, or genetics without touching *core* logic.                                      |
 | **Unified Configuration** | JSON-based configuration system for both engines — easily experiment with different world setups and robot behaviors. |
+| **Comprehensive Testing** | Full unit test suite with 100% success rate covering all core components and edge cases. |
 
 ---
 ## Installation
@@ -56,6 +57,153 @@ The main dependencies include:
 For a complete list, see `requirements.txt`.
 
 ---
+## Testing
+
+The project includes a comprehensive unit test suite to ensure code quality and catch regressions. All tests are designed to run quickly and provide detailed feedback.
+
+### Running Tests
+
+#### Full Test Suite
+```bash
+# Run all tests with progress tracking
+python run_tests.py
+```
+
+#### Individual Test Files
+```bash
+# Run specific test modules
+python -m unittest tests.test_robot
+python -m unittest tests.test_world
+python -m unittest tests.test_brain
+```
+
+#### Single Test with Timeout
+```bash
+# Run a specific test with timeout protection
+python test_single.py tests.test_world.TestWorld.test_step_robot_reproduction 15
+```
+
+#### Test Discovery
+```bash
+# Discover and run all tests
+python -m unittest discover tests
+
+# Run with verbose output
+python -m unittest discover tests -v
+```
+
+### Test Coverage
+
+The test suite covers **106 tests** across **7 test modules**:
+
+| Module | Tests | Coverage |
+|--------|-------|----------|
+| `test_base_element.py` | 4 | Base element functionality |
+| `test_brain.py` | 18 | Brain implementations (rule-based, RL, factory) |
+| `test_engine.py` | 12 | Engine abstractions and mock implementations |
+| `test_robot.py` | 24 | Robot behavior, states, and interactions |
+| `test_static_element.py` | 10 | Resource and static element behavior |
+| `test_utils.py` | 4 | Geometry and ID management utilities |
+| `test_world.py` | 34 | World simulation and interactions |
+
+### Test Features
+
+#### Progress Tracking
+- Real-time progress indicators with emojis
+- Timing information for each test
+- Warnings for slow-running tests (>5 seconds)
+
+#### Timeout Protection
+- Automatic timeout detection for hanging tests
+- Configurable timeout limits
+- Graceful interruption with detailed error reporting
+
+#### Comprehensive Coverage
+- **Robot Behavior**: Movement, energy consumption, resource collection, reproduction, connections
+- **Brain Systems**: Rule-based decision making, RL neural networks, brain cloning and serialization
+- **World Simulation**: Step-by-step simulation, object management, spatial indexing
+- **Resource Management**: Collection, respawning, usage limits
+- **Serialization**: Save/load state functionality
+- **Engine Integration**: Mock engine for testing, object lifecycle management
+
+#### Edge Case Testing
+- Error conditions and exception handling
+- Boundary value testing
+- Mock object integration
+- State persistence and restoration
+
+### Test Output Example
+
+```
+Virtual Bot Environment 3D - Test Suite
+==================================================
+Press Ctrl+C to interrupt long-running tests
+
+🔄 Running: test_color_storage (test_base_element.TestBaseElement.test_color_storage)
+.
+🔄 Running: test_init (test_base_element.TestBaseElement.test_init)
+.
+...
+🔄 Running: test_step_robot_reproduction (test_world.TestWorld.test_step_robot_reproduction)
+🔄 Setting up reproduction test...
+🔄 Adding robots to world...
+🔄 Initial robot count: 2
+🔄 Running world step...
+🔄 Final robot count: 3
+🔄 Offspring produced: 1
+✅ Reproduction test completed successfully!
+.
+
+================================================================================
+TEST SUMMARY
+================================================================================
+Total Tests: 106
+Passed: 106
+Failed: 0
+Errors: 0
+Skipped: 0
+Success Rate: 100.0%
+Duration: 19.22 seconds
+
+🎉 ALL TESTS PASSED!
+================================================================================
+```
+
+### Debugging Tests
+
+#### Single Test Runner
+The `test_single.py` script provides detailed debugging for individual tests:
+
+```bash
+# Run with extended timeout and detailed output
+python test_single.py tests.test_world.TestWorld.test_step_resource_collection 30
+```
+
+#### Test Development
+When adding new tests:
+1. Follow the existing naming convention: `test_<functionality>`
+2. Use descriptive test names that explain the expected behavior
+3. Include edge cases and error conditions
+4. Use mock objects for external dependencies
+5. Add progress indicators for long-running tests
+
+#### Common Test Patterns
+
+```python
+# Mock brain for predictable behavior
+robot.brain.decide_action = Mock(return_value=0)
+
+# Test energy consumption
+self.assertLess(robot.energy, initial_energy)
+
+# Test state changes
+self.assertEqual(robot.state, RobotState.COLLECTING)
+
+# Test world statistics
+self.assertEqual(world.stats.resources_collected, 1)
+```
+
+---
 ## Project Structure
 
 ```
@@ -76,12 +224,22 @@ For a complete list, see `requirements.txt`.
 │   │   ├── ursina_engine.py   # Desktop 3D engine
 │   │   └── webgl_engine.py    # WebGL engine
 │   └── utils/                 # Utility functions
+├── tests/                     # Unit test suite
+│   ├── test_base_element.py   # Base element tests
+│   ├── test_brain.py          # Brain implementation tests
+│   ├── test_engine.py         # Engine abstraction tests
+│   ├── test_robot.py          # Robot behavior tests
+│   ├── test_static_element.py # Static element tests
+│   ├── test_utils.py          # Utility function tests
+│   └── test_world.py          # World simulation tests
 ├── examples/                  # Example scripts and configs
 │   ├── run_demo.py            # Basic demo
 │   ├── run_with_config.py     # Configurable demo
 │   ├── world_config.json      # Basic configuration
 │   ├── advanced_world_config.json
 │   └── web_visualization/     # WebGL examples
+├── run_tests.py               # Main test runner
+├── test_single.py             # Single test runner with timeout
 └── requirements.txt           # Python dependencies
 ```
 

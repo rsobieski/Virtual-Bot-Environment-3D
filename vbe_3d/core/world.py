@@ -99,6 +99,7 @@ class World:
             robot: The robot to add.
         """
         self.robots.append(robot)
+        robot.world = self
         self.engine.add_object(robot)
         self.stats.robots_created += 1
         
@@ -110,6 +111,7 @@ class World:
         """
         if robot in self.robots:
             self.robots.remove(robot)
+            robot.world = None
             self.engine.remove_object(robot)
             self.stats.robots_destroyed += 1
             
@@ -120,6 +122,7 @@ class World:
             element: The static element to add.
         """
         self.static_elements.append(element)
+        element.world = self
         self.engine.add_object(element)
         
     def remove_static(self, element: StaticElement) -> None:
@@ -130,6 +133,7 @@ class World:
         """
         if element in self.static_elements:
             self.static_elements.remove(element)
+            element.world = None
             self.engine.remove_object(element)
             
     def step(self) -> None:
@@ -141,6 +145,10 @@ class World:
             if robot.state == RobotState.DEAD:
                 self.remove_robot(robot)
                 continue
+                
+            # Decrease reproduction cooldown
+            if hasattr(robot, 'reproduction_cooldown') and robot.reproduction_cooldown > 0:
+                robot.reproduction_cooldown -= 1
                 
             # Get robot's perception of the world
             obs = robot.perceive(self)
@@ -167,13 +175,20 @@ class World:
                     robot.connect(other)
                     self.stats.connections_made += 1
                     
-            # Check for reproduction
+            # Check for reproduction - limit to prevent infinite loops
+            reproduction_count = 0
+            max_reproductions_per_step = 5  # Limit reproductions per step
+            
             for other in self.robots:
+                if reproduction_count >= max_reproductions_per_step:
+                    break
+                    
                 if other != robot and math.dist(robot.position, other.position) < 1.0:
                     child = robot.reproduce(other)
                     if child:
                         self.add_robot(child)
                         self.stats.offspring_produced += 1
+                        reproduction_count += 1
                         
     def to_dict(self) -> dict:
         """Convert world state to dictionary for serialization."""
@@ -251,7 +266,7 @@ class World:
             for r in self.robots:
                 robot_data = {
                     "class": r.__class__.__name__,
-                    "position": r.position,
+                    "position": (r.position.x, r.position.y, r.position.z),  # Convert Vec3 to tuple
                     "color": r.color,
                     "energy": getattr(r, "energy", None),
                     "connections": [r2.id for r2 in r.connections.keys()],
@@ -264,7 +279,7 @@ class World:
             for e in self.static_elements:
                 elem_data = {
                     "class": e.__class__.__name__,
-                    "position": e.position,
+                    "position": (e.position.x, e.position.y, e.position.z),  # Convert Vec3 to tuple
                     "color": e.color,
                     "resource_value": getattr(e, "resource_value", None)
                 }

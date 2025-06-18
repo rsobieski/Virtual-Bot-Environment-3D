@@ -82,11 +82,15 @@ class StaticElement(BaseElement):
             
         value = self.resource_value
         
+        # Always increment current uses
+        self.properties.current_uses += 1
+        
+        # Check if max uses reached
         if self.properties.max_uses is not None:
-            self.properties.current_uses += 1
             if self.properties.current_uses >= self.properties.max_uses:
                 self.is_collectible = False
                 
+        # Set respawn timer if configured
         if self.properties.respawn_time is not None:
             self.respawn_timer = self.properties.respawn_time
             self.is_collectible = False
